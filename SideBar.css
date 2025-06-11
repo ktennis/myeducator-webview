@@ -1,0 +1,65 @@
+.button {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  display: block;
+  margin: 40px auto 0 auto;
+}
+
+.button:hover {
+  background-color: #005fa3;
+}
+
+.instructions {
+  padding: 10px;
+  max-width: 90%;
+  padding-bottom: 30px;
+}
+
+#code-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 40px;
+  gap: 12px;
+}
+
+#accessCode {
+  padding: 10px 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 16px;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#accessCode:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.15);
+}
+
+#codeSubmitBtn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background-color: #007acc;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s;
+}
+
+#codeSubmitBtn:hover {
+  background-color: #005fa3;
+}

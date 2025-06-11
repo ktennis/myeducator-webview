@@ -9,15 +9,50 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:vsmyeducatior-sidebar, onCommand:myeducator.helloWorld"
+  ],
   "main": "./extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vsmyeducator-sidebar-view",
+          "title": "VSmyeducator",
+          "icon": "MEicon.svg"
+        }
+      ]
+    },
+    "views": {
+      "vsmyeducator-sidebar-view": [
+        {
+          "type": "webview",
+          "id": "vsmyeducator-sidebar",
+          "name": "VSmyeducator",
+          "icon": "MEicon.svg",
+          "contextualTitle": "VSmyeducator"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "myeducator.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "myeducator.openPanel",
+        "title": "Open Sidebar",
+        "icon": "MEicon.svg"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "myeducator.openPanel",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "lint": "eslint .",

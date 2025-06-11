@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>Pet Boarding Program Instructions</h1>
+
+    <h2><strong>Instructions:</strong></h2>
+    <ul>
+      <li>Make sure you include comments.</li>
+      <li>
+        Write a program that prompts the user to enter the number of customers
+        for your Pet Boarding company.
+      </li>
+      <li>
+        You <strong>do not</strong> need to store each customer in a list.
+      </li>
+      <li>You <strong>must</strong> use classes.</li>
+    </ul>
+
+    <h3>Customer Class</h3>
+    <p><strong>Instance Variables:</strong></p>
+    <ul>
+      <li>cust_id (string)</li>
+      <li>first_name (string)</li>
+      <li>last_name (string)</li>
+      <li>address1 (string)</li>
+      <li>address2 (string)</li>
+      <li>city (string)</li>
+      <li>state (string)</li>
+      <li>zip (string)</li>
+      <li>balance (float)</li>
+      <li>cust_pet (Pet object)</li>
+    </ul>
+
+    <p><strong>Constructor should:</strong></p>
+    <ul>
+      <li>
+        Receive first_name, last_name, address1, address2, city, state, and zip
+        and store them
+      </li>
+      <li>Initialize balance to 0.0</li>
+      <li>Initialize cust_pet to None</li>
+      <li>Calculate cust_id using gen_id method</li>
+    </ul>
+
+    <p><strong>gen_id()</strong></p>
+    <ul>
+      <li>Receives first_name, last_name, address1</li>
+      <li>
+        Creates ID using first 3 letters of first and last name and first 5 of
+        address1 (no spaces)
+      </li>
+    </ul>
+
+    <p><strong>return_bill()</strong></p>
+    <div class="highlight">
+      Returns a string like:<br />
+      <em
+        >Customer greand2677e with name greg anderson owes $123.50 for charlie's
+        stay from 10/01/2020 to 10/20/2020</em
+      >
+    </div>
+
+    <p><strong>make_payment()</strong></p>
+    <ul>
+      <li>Receives a float</li>
+      <li>Subtracts amount from balance</li>
+    </ul>
+
+    <p><strong>Class Variable:</strong></p>
+    <ul>
+      <li>company_name = "Critter Watch"</li>
+    </ul>
+
+    <h3>Pet Class</h3>
+    <p><strong>Instance Variables:</strong></p>
+    <ul>
+      <li>pet_name (string)</li>
+      <li>breed (string)</li>
+      <li>age (int)</li>
+      <li>appointment (Appointment object)</li>
+    </ul>
+
+    <p>
+      <strong>Constructor receives:</strong> pet_name, breed, age, owner
+      (Customer object)
+    </p>
+    <p>
+      <strong>Note:</strong> Call self.appointment = Appointment(owner) inside
+      constructor
+    </p>
+
+    <h3>Appointment Class</h3>
+    <p><strong>Instance Variables:</strong></p>
+    <ul>
+      <li>begin_date (date)</li>
+      <li>end_date (date)</li>
+      <li>day_rate (float)</li>
+      <li>total_days (int)</li>
+      <li>total_cost (float)</li>
+      <li>owner (Customer object)</li>
+    </ul>
+
+    <p><strong>Methods:</strong></p>
+    <ul>
+      <li><strong>Constructor:</strong> Receives owner (Customer)</li>
+      <li>
+        <strong>set_appointment(begin_date, end_date, day_rate):</strong>
+        <ul>
+          <li>Calls calc_days()</li>
+          <li>Updates total_days and total_cost</li>
+          <li>Updates owner's balance</li>
+        </ul>
+      </li>
+      <li>
+        <strong>calc_days():</strong>
+        <ul>
+          <li>Calculates total_days as (end_date - begin_date).days</li>
+          <li>If total_days &le; 0, set to 1</li>
+          <li>Calculates total_cost = total_days × day_rate</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Additional Notes</h3>
+    <ul>
+      <li>A Customer can only have <strong>one pet</strong></li>
+      <li>Only the latest boarding info is kept</li>
+      <li><strong>Company Name:</strong> Critter Watch (class variable)</li>
+    </ul>
+
+    <h3>Implementation Requirements</h3>
+    <ul>
+      <li>Prompt user for customer data and instantiate Customer</li>
+      <li>Prompt for pet data and assign Pet to cust_pet on Customer</li>
+      <li>Prompt for appointment data and call set_appointment()</li>
+      <li>Print bill with return_bill()</li>
+      <li>Call make_payment() and print updated bill</li>
+    </ul>
+
+    <h3>Bonus (Extra 3 Points)</h3>
+    <ul>
+      <li>Implement pet attribute as a list</li>
+      <li>Implement appointment attribute as a list</li>
+    </ul>
+  </body>
+</html>
