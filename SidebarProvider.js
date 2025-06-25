@@ -7,11 +7,8 @@ const path = require("path");
 async function runDockerCommand(command) {
   try {
     const { stdout, stderr } = await exec(command);
-    if (stderr) {
-      console.error("Docker error:", stderr);
-      return stderr;
-    }
-    return stdout;
+    // Always return both stdout and stderr
+    return [stdout, stderr].filter(Boolean).join('\n');
   } catch (err) {
     console.error("Exec error:", err);
     return err.message;
@@ -36,6 +33,7 @@ class SidebarProvider {
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
+      console.log('Extension received message:', data); // <-- Add this
       switch (data.type) {
         case "onInfo": {
           if (!data.value) return;
@@ -73,14 +71,57 @@ class SidebarProvider {
           const tmpFilePath = path.join(os.tmpdir(), "student_code.py");
           fs.writeFileSync(tmpFilePath, code);
 
+          // Convert Windows path to Docker-friendly format
+          let dockerPath = tmpFilePath;
+          if (process.platform === "win32") {
+            dockerPath = tmpFilePath.replace(/\\/g, "/");
+            if (dockerPath[1] === ":") {
+              dockerPath = `/${dockerPath[0].toLowerCase()}${dockerPath.slice(2)}`;
+            }
+          }
+
           const result = await runDockerCommand(
-            `docker run --rm -v "${tmpFilePath}:/code/student_code.py" my-grader`
+            `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`
           );
 
           // Send the result to the webview
           webviewView.webview.postMessage({
             type: "showResult",
             value: result,
+          });
+          break;
+        }
+
+        case "testCode": {
+          const editor = vscode.window.activeTextEditor;
+          if (!editor) {
+            vscode.window.showErrorMessage("No active editor found.");
+            return;
+          }
+          const code = editor.document.getText();
+
+          const fs = require("fs");
+          const os = require("os");
+          const path = require("path");
+          const tmpFilePath = path.join(os.tmpdir(), "student_code.py");
+          fs.writeFileSync(tmpFilePath, code);
+
+          // Convert Windows path to Docker-friendly format
+          let dockerPath = tmpFilePath;
+          if (process.platform === "win32") {
+            dockerPath = tmpFilePath.replace(/\\/g, "/");
+            if (dockerPath[1] === ":") {
+              dockerPath = `/${dockerPath[0].toLowerCase()}${dockerPath.slice(2)}`;
+            }
+          }
+
+          const result = await runDockerCommand(
+            `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`
+          );
+
+          webviewView.webview.postMessage({
+            type: "showResult",
+            value: result || "No output returned from Docker.",
           });
           break;
         }
@@ -122,10 +163,14 @@ class SidebarProvider {
   </div>
   <div id="instructions" class="instructions" style="display:none;">
     ${instructionsHtml}
-    <button class="button" id="submitBtn">Submit</button>
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+      <button class="button" id="testBtn">Test</button>
+      <button class="button" id="submitBtn">Submit</button>
+    </div>
   </div>
   <script>
     const vscode = acquireVsCodeApi();
+
     document.getElementById('codeSubmitBtn').addEventListener('click', () => {
       const code = document.getElementById('accessCode').value;
       vscode.postMessage({ type: 'accessCode', value: code });
@@ -133,21 +178,24 @@ class SidebarProvider {
 
     window.addEventListener('message', event => {
       const message = event.data;
+      console.log('Webview received message:', message); // <-- Add this
+
       if (message.type === 'showInstructions') {
         document.getElementById('code-entry').style.display = 'none';
         document.getElementById('instructions').style.display = 'block';
-      }
-    });
+        // Hide result if present
+        let resultDiv = document.getElementById('result');
+        if (resultDiv) resultDiv.style.display = 'none';
 
-    document.getElementById('submitBtn').addEventListener('click', () => {
-        vscode.postMessage({ type: 'submitCode' });
-    });
-
-    window.addEventListener('message', event => {
-      const message = event.data;
-      if (message.type === 'showInstructions') {
-        document.getElementById('code-entry').style.display = 'none';
-        document.getElementById('instructions').style.display = 'block';
+        // Attach listeners now that buttons are visible
+        document.getElementById('testBtn').onclick = () => {
+          console.log('Test button clicked'); // <-- Add this
+          vscode.postMessage({ type: 'testCode' });
+        };
+        document.getElementById('submitBtn').onclick = () => {
+          console.log('Submit button clicked'); // <-- Add this
+          vscode.postMessage({ type: 'submitCode' });
+        };
       }
       if (message.type === 'showResult') {
         document.getElementById('instructions').style.display = 'none';
@@ -159,7 +207,15 @@ class SidebarProvider {
           resultDiv.className = 'instructions';
           document.body.appendChild(resultDiv);
         }
-        resultDiv.innerText = message.value;
+        // Set result text and Back button together
+        resultDiv.innerHTML = \`
+          <div>\${message.value}</div>
+          <button class="button" id="backBtn">Back</button>
+        \`;
+        document.getElementById('backBtn').onclick = () => {
+          resultDiv.style.display = 'none';
+          document.getElementById('instructions').style.display = 'block';
+        };
         resultDiv.style.display = 'block';
       }
     });
