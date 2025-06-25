@@ -7,11 +7,11 @@ const path = require("path");
 async function runDockerCommand(command) {
   try {
     const { stdout, stderr } = await exec(command);
-    // Always return both stdout and stderr
     return [stdout, stderr].filter(Boolean).join('\n');
   } catch (err) {
     console.error("Exec error:", err);
-    return err.message;
+    // Return both stderr and message for full diagnostics
+    return `${err.stderr || ''}\n${err.stdout || ''}\n${err.message}`;
   }
 }
 
@@ -58,33 +58,37 @@ class SidebarProvider {
         }
 
         case "submitCode": {
-          const editor = vscode.window.activeTextEditor;
-          if (!editor) {
-            vscode.window.showErrorMessage("No active editor found.");
-            return;
-          }
-          const code = editor.document.getText();
-
+          const vscode = require("vscode");
           const fs = require("fs");
           const os = require("os");
           const path = require("path");
-          const tmpFilePath = path.join(os.tmpdir(), "student_code.py");
-          fs.writeFileSync(tmpFilePath, code);
 
-          // Convert Windows path to Docker-friendly format
-          let dockerPath = tmpFilePath;
-          if (process.platform === "win32") {
-            dockerPath = tmpFilePath.replace(/\\/g, "/");
-            if (dockerPath[1] === ":") {
-              dockerPath = `/${dockerPath[0].toLowerCase()}${dockerPath.slice(2)}`;
-            }
+          // Prompt user to select a Python file
+          const fileUris = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            openLabel: "Select Python file to grade",
+            filters: { "Python Files": ["py"] }
+          });
+
+          if (!fileUris || fileUris.length === 0) {
+            vscode.window.showErrorMessage("No file selected.");
+            return;
           }
 
-          const result = await runDockerCommand(
-            `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`
-          );
+          const selectedFilePath = fileUris[0].fsPath;
 
-          // Send the result to the webview
+          // Use forward slashes for Docker on Windows
+          let dockerPath = selectedFilePath;
+          if (process.platform === "win32") {
+            dockerPath = selectedFilePath.replace(/\\/g, "/");
+          }
+
+          const dockerCmd = `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`;
+          console.log("Running Docker command:", dockerCmd);
+
+          const result = await runDockerCommand(dockerCmd);
+          console.log("Docker result:", result);
+
           webviewView.webview.postMessage({
             type: "showResult",
             value: result,
@@ -109,16 +113,26 @@ class SidebarProvider {
           // Convert Windows path to Docker-friendly format
           let dockerPath = tmpFilePath;
           if (process.platform === "win32") {
-            dockerPath = tmpFilePath.replace(/\\/g, "/");
-            if (dockerPath[1] === ":") {
-              dockerPath = `/${dockerPath[0].toLowerCase()}${dockerPath.slice(2)}`;
-            }
+            // Use the Windows path directly for Docker Desktop on Windows
+            dockerPath = tmpFilePath;
           }
+          const dockerCmd = `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`;
+          console.log("Running Docker command:", dockerCmd);
 
-          const result = await runDockerCommand(
-            `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`
-          );
+          const result = await runDockerCommand(dockerCmd);
+          console.log("Docker result:", result);
 
+          webviewView.webview.postMessage({
+            type: "showResult",
+            value: result || "No output returned from Docker.",
+          });
+          break;
+        }
+
+        // New case for listing Docker containers
+        case "listContainers": {
+          const result = await runDockerCommand('docker ps');
+          console.log("Docker result:", result);
           webviewView.webview.postMessage({
             type: "showResult",
             value: result || "No output returned from Docker.",
