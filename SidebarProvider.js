@@ -118,12 +118,6 @@ class SidebarProvider {
         }
 
         case "testCode": {
-          const vscode = require("vscode");
-          const fs = require("fs");
-          const os = require("os");
-          const path = require("path");
-
-          // Prompt user to select a Python file
           const fileUris = await vscode.window.showOpenDialog({
             canSelectMany: false,
             openLabel: "Select Python file to test",
@@ -136,23 +130,43 @@ class SidebarProvider {
           }
 
           const selectedFilePath = fileUris[0].fsPath;
+          const code = fs.readFileSync(selectedFilePath, "utf8");
 
-          // Use forward slashes for Docker on Windows
-          let dockerPath = selectedFilePath;
-          if (process.platform === "win32") {
-            dockerPath = selectedFilePath.replace(/\\/g, "/");
+          // Extract all input prompts
+          const inputPrompts = [];
+          const inputRegex = /input\s*\(\s*["']([^"']+)["']\s*\)/g;
+          let match;
+          while ((match = inputRegex.exec(code)) !== null) {
+            inputPrompts.push(match[1]);
           }
 
-          // Get the directory and filename
+          // Prompt user for each input
+          let userInputs = [];
+          for (let i = 0; i < inputPrompts.length; i++) {
+            const answer = await vscode.window.showInputBox({
+              prompt: inputPrompts[i] || `Enter input #${i + 1}`,
+              placeHolder: "Input value"
+            });
+            if (answer === undefined) return;
+            userInputs.push(answer);
+          }
+
+          // Write inputs to temp file
+          const os = require("os");
+          const tmpInputPath = path.join(os.tmpdir(), "student_input.txt");
+          fs.writeFileSync(tmpInputPath, userInputs.join("\n"));
+
+          // Prepare Docker paths
+          let dockerInputPath = tmpInputPath;
+          if (process.platform === "win32") {
+            dockerInputPath = tmpInputPath.replace(/\\/g, "/");
+          }
           const fileDir = path.dirname(selectedFilePath).replace(/\\/g, "/");
           const fileName = path.basename(selectedFilePath);
 
-          // Use the official Python image to run the script
-          const dockerCmd = `docker run --rm -v "${fileDir}:/code" python:3 python /code/${fileName}`;
-          console.log("Running Docker command:", dockerCmd);
-
+          // Run in Docker
+          const dockerCmd = `docker run --rm -v "${fileDir}:/code" -v "${dockerInputPath}:/code/input.txt" python:3 sh -c "python /code/${fileName} < /code/input.txt"`;
           const result = await runDockerCommand(dockerCmd);
-          console.log("Docker result:", result);
 
           webviewView.webview.postMessage({
             type: "showResult",
