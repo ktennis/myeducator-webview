@@ -236,6 +236,13 @@ class SidebarProvider {
       vscode.postMessage({ type: 'accessCode', value: code });
     });
 
+    // Allow Enter key to submit access code
+    document.getElementById('accessCode').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        document.getElementById('codeSubmitBtn').click();
+      }
+    });
+
     window.addEventListener('message', event => {
       const message = event.data;
       console.log('Webview received message:', message); // <-- Add this
