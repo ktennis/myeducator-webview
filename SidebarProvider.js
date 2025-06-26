@@ -89,34 +89,66 @@ class SidebarProvider {
           const result = await runDockerCommand(dockerCmd);
           console.log("Docker result:", result);
 
+          // Extract only the grade and feedback lines
+          // Example output:
+          // Assignment Grade = 100%
+          // Feedback: Your function performed the addition as expected.
+          let gradeLine = "";
+          let feedbackLine = "";
+          if (result) {
+            const lines = result.split(/\r?\n/);
+            for (const line of lines) {
+              if (line.startsWith("Assignment Grade")) gradeLine = line;
+              if (line.startsWith("Feedback:")) feedbackLine = line;
+            }
+          }
+
+          let output = "";
+          if (gradeLine || feedbackLine) {
+            output = [gradeLine, feedbackLine].filter(Boolean).join("<br>");
+          } else {
+            output = "No grade or feedback found.";
+          }
+
           webviewView.webview.postMessage({
             type: "showResult",
-            value: result,
+            value: output,
           });
           break;
         }
 
         case "testCode": {
-          const editor = vscode.window.activeTextEditor;
-          if (!editor) {
-            vscode.window.showErrorMessage("No active editor found.");
-            return;
-          }
-          const code = editor.document.getText();
-
+          const vscode = require("vscode");
           const fs = require("fs");
           const os = require("os");
           const path = require("path");
-          const tmpFilePath = path.join(os.tmpdir(), "student_code.py");
-          fs.writeFileSync(tmpFilePath, code);
 
-          // Convert Windows path to Docker-friendly format
-          let dockerPath = tmpFilePath;
-          if (process.platform === "win32") {
-            // Use the Windows path directly for Docker Desktop on Windows
-            dockerPath = tmpFilePath;
+          // Prompt user to select a Python file
+          const fileUris = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            openLabel: "Select Python file to test",
+            filters: { "Python Files": ["py"] }
+          });
+
+          if (!fileUris || fileUris.length === 0) {
+            vscode.window.showErrorMessage("No file selected.");
+            return;
           }
-          const dockerCmd = `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`;
+
+          const selectedFilePath = fileUris[0].fsPath;
+
+          // Use forward slashes for Docker on Windows
+          let dockerPath = selectedFilePath;
+          if (process.platform === "win32") {
+            dockerPath = selectedFilePath.replace(/\\/g, "/");
+          }
+
+          // Get the directory and filename
+          const fileDir = path.dirname(selectedFilePath).replace(/\\/g, "/");
+          const fileName = path.basename(selectedFilePath);
+
+          // Use the official Python image to run the script
+          const dockerCmd = `docker run --rm -v "${fileDir}:/code" python:3 python /code/${fileName}`;
           console.log("Running Docker command:", dockerCmd);
 
           const result = await runDockerCommand(dockerCmd);
