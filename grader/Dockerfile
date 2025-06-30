@@ -1,7 +1,7 @@
 FROM python:3
 
-WORKDIR /code
+WORKDIR /grader
 
-COPY grader.py /code/grader.py
+COPY grader.py .
 
 CMD ["python", "grader.py"]

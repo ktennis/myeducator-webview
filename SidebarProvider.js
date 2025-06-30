@@ -83,8 +83,8 @@ class SidebarProvider {
             dockerPath = selectedFilePath.replace(/\\/g, "/");
           }
 
-          const dockerCmd = `docker run --rm -v "${dockerPath}:/code/student_code.py" my-grader`;
-          console.log("Running Docker command:", dockerCmd);
+          const fileName = path.basename(selectedFilePath);
+          const dockerCmd = `docker run --rm -v "${dockerPath}:/code/${fileName}" my-grader python /grader/grader.py /code/${fileName}`;          console.log("Running Docker command:", dockerCmd);
 
           const result = await runDockerCommand(dockerCmd);
           console.log("Docker result:", result);
