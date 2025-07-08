@@ -140,15 +140,22 @@ class SidebarProvider {
             inputPrompts.push(match[1]);
           }
 
-          // Prompt user for each input
-          let userInputs = [];
-          for (let i = 0; i < inputPrompts.length; i++) {
-            const answer = await vscode.window.showInputBox({
-              prompt: inputPrompts[i] || `Enter input #${i + 1}`,
-              placeHolder: "Input value"
-            });
-            if (answer === undefined) return;
-            userInputs.push(answer);
+          // Save file path for later use
+          this._testFilePath = selectedFilePath;
+
+          // Send prompts to webview
+          webviewView.webview.postMessage({
+            type: "showInputFields",
+            prompts: inputPrompts,
+          });
+          break;
+        }
+        case "runTestWithInputs": {
+          const userInputs = data.inputs;
+          const selectedFilePath = this._testFilePath;
+          if (!selectedFilePath) {
+            vscode.window.showErrorMessage("No file selected.");
+            return;
           }
 
           // Write inputs to temp file
@@ -284,6 +291,45 @@ class SidebarProvider {
           document.getElementById('instructions').style.display = 'block';
         };
         resultDiv.style.display = 'block';
+      }
+      if (message.type === 'showInputFields') {
+        document.getElementById('instructions').style.display = 'none';
+        let resultDiv = document.getElementById('result');
+        if (!resultDiv) {
+          resultDiv = document.createElement('div');
+          resultDiv.id = 'result';
+          resultDiv.className = 'instructions';
+          document.body.appendChild(resultDiv);
+        }
+        // Render input fields as a form
+        let html = '<form id="inputForm">';
+        (message.prompts || []).forEach((prompt, idx) => {
+          html += \`<label style="display:block; margin-bottom:16px;">\${prompt || 'Input ' + (idx+1)}<br>
+            <input type="text" name="input\${idx}" required></label>\`;
+        });
+        html += \`
+          <div style="display:flex; gap:12px; margin-top:12px;">
+            <button class="button" type="submit">Submit</button>
+            <button class="button" type="button" id="backBtnInput">Back</button>
+          </div>
+        </form>\`;
+        resultDiv.innerHTML = html;
+        resultDiv.style.display = 'block';
+
+        document.getElementById('backBtnInput').onclick = () => {
+          resultDiv.style.display = 'none';
+          document.getElementById('instructions').style.display = 'block';
+        };
+
+        document.getElementById('inputForm').onsubmit = (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const inputs = [];
+          for (let i = 0; i < (message.prompts || []).length; i++) {
+            inputs.push(form['input' + i].value);
+          }
+          vscode.postMessage({ type: 'runTestWithInputs', inputs });
+        };
       }
     });
   </script>
