@@ -214,9 +214,40 @@ class SidebarProvider {
           const dockerCmd = `docker run --rm -v "${fileDir}:/code" -v "${dockerInputPath}:/code/input.txt" python:3 sh -c "python /code/${fileName} < /code/input.txt"`;
           const result = await runDockerCommand(dockerCmd);
 
+          // After running the code and getting `result`:
+          let inputPrompts = [];
+          try {
+            inputPrompts = await extractInputsWithAst(selectedFilePath);
+          } catch (err) {
+            vscode.window.showErrorMessage("Failed to extract input prompts: " + err);
+          }
+
+          // Replace each prompt in the output with prompt + user input
+          let processedOutput = result || "No output returned from Docker.";
+          if (inputPrompts && inputPrompts.length > 0 && userInputs && userInputs.length > 0) {
+            inputPrompts.forEach((prompt, idx) => {
+              const value = userInputs[idx] !== undefined ? userInputs[idx] : "";
+              // Remove trailing whitespace from prompt for replacement
+              const trimmedPrompt = prompt.replace(/\s+$/, '');
+              // Replace prompt (with any trailing whitespace in output) with prompt + single space + value + newline
+              processedOutput = processedOutput.replace(
+                new RegExp(trimmedPrompt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*'),
+                trimmedPrompt + ' ' + value + '\n'
+              );
+            });
+            // Remove accidental double newlines
+            processedOutput = processedOutput.replace(/\n{2,}/g, '\n');
+            // Trim leading/trailing whitespace and remove leading spaces from each line
+            processedOutput = processedOutput
+              .split('\n')
+              .map(line => line.trimStart())
+              .join('\n')
+              .trim();
+          }
+
           webviewView.webview.postMessage({
             type: "showResult",
-            value: result || "No output returned from Docker.",
+            value: `<pre>${processedOutput}</pre>`,
           });
           break;
         }
