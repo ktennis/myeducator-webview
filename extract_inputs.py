@@ -13,7 +13,7 @@ for node in ast.walk(tree):
     if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "input":
         if node.args:
             arg = node.args[0]
-            if isinstance(arg, ast.Str):
+            if isinstance(arg, ast.Constant):
                 prompts.append(arg.s)
             elif isinstance(arg, ast.Constant) and isinstance(arg.value, str):  # Python 3.8+
                 prompts.append(arg.value)

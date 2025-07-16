@@ -3,6 +3,7 @@ const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const fs = require("fs");
 const path = require("path");
+const cp = require('child_process');
 
 async function runDockerCommand(command) {
   try {
@@ -13,6 +14,42 @@ async function runDockerCommand(command) {
     // Return both stderr and message for full diagnostics
     return `${err.stderr || ''}\n${err.stdout || ''}\n${err.message}`;
   }
+}
+
+/**
+ * Extracts input prompts from a Python file using extract_inputs.py.
+ * @param {string} targetFile - The path to the Python file to analyze.
+ * @returns {Promise<string[]>} Array of input prompts.
+ */
+function extractInputsWithAst(targetFile) {
+    return new Promise((resolve, reject) => {
+        const scriptPath = path.join(__dirname, 'extract_inputs.py');
+        const scriptDir = path.dirname(scriptPath);
+        const scriptFile = path.basename(scriptPath);
+        const targetFileName = path.basename(targetFile);
+
+        // Use forward slashes for Docker on Windows
+        const dockerScriptDir = scriptDir.replace(/\\/g, '/');
+        const dockerTargetDir = path.dirname(targetFile).replace(/\\/g, '/');
+
+        // Mount both the script and the target file
+        const dockerCmd = [
+            'docker run --rm',
+            `-v "${dockerScriptDir}:/scripts"`,
+            `-v "${dockerTargetDir}:/code"`,
+            'python:3',
+            `python /scripts/${scriptFile} /code/${targetFileName}`
+        ].join(' ');
+
+        cp.exec(dockerCmd, (error, stdout, stderr) => {
+            if (error) {
+                reject(stderr || error.message);
+                return;
+            }
+            const prompts = stdout.trim() ? stdout.trim().split('|||') : [];
+            resolve(prompts);
+        });
+    });
 }
 
 class SidebarProvider {
@@ -77,7 +114,6 @@ class SidebarProvider {
 
           const selectedFilePath = fileUris[0].fsPath;
 
-          // Use forward slashes for Docker on Windows
           let dockerPath = selectedFilePath;
           if (process.platform === "win32") {
             dockerPath = selectedFilePath.replace(/\\/g, "/");
@@ -89,10 +125,6 @@ class SidebarProvider {
           const result = await runDockerCommand(dockerCmd);
           console.log("Docker result:", result);
 
-          // Extract only the grade and feedback lines
-          // Example output:
-          // Assignment Grade = 100%
-          // Feedback: Your function performed the addition as expected.
           let gradeLine = "";
           let feedbackLine = "";
           if (result) {
@@ -133,11 +165,18 @@ class SidebarProvider {
           const code = fs.readFileSync(selectedFilePath, "utf8");
 
           // Extract all input prompts
-          const inputPrompts = [];
-          const inputRegex = /input\s*\(\s*["']([^"']+)["']\s*\)/g;
+          let inputPrompts = [];
+          const inputAST = /input\s*\(\s*["']([^"']+)["']\s*\)/g;
           let match;
-          while ((match = inputRegex.exec(code)) !== null) {
+          while ((match = inputAST.exec(code)) !== null) {
             inputPrompts.push(match[1]);
+          }
+
+          // Extract all input prompts using AST script
+          try {
+            inputPrompts = await extractInputsWithAst(selectedFilePath);
+          } catch (err) {
+            vscode.window.showErrorMessage("Failed to extract input prompts: " + err);
           }
 
           // Save file path for later use
