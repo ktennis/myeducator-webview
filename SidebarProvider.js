@@ -322,7 +322,7 @@ class SidebarProvider {
         }
         // Set result text and Back button together
         resultDiv.innerHTML = \`
-          <div>\${message.value}</div>
+          <pre>\${message.value}</pre>
           <button class="button" id="backBtn">Back</button>
         \`;
         document.getElementById('backBtn').onclick = () => {

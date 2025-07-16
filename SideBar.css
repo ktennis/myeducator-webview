@@ -64,3 +64,8 @@
 #codeSubmitBtn:hover {
   background-color: #005fa3;
 }
+
+#result pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
